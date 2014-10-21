@@ -1,0 +1,4 @@
+liteImage.js
+============
+
+compress image
