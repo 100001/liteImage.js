@@ -1,0 +1,115 @@
+<!DOCTYPE>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>liteImage.js</title>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />
+<meta content="yes" name="apple-mobile-web-app-capable" />
+<meta content="telephone=no" name="format-detection" />
+</head>
+<body>
+<div>
+    <div>
+        <a href="javascript:;">
+            <input id="file" type="file">选择图片
+        </a>
+        <a href="javascript:;" id="file_upload">上传</a>
+    </div>
+    <div id="preview">
+
+    </div>
+</div>
+<!-- 引入 jquery or zepto and liteImage.js -->
+<script src="zepto.js"></script>
+<script src="liteImage.js"></script>
+<script >
+$(function() {
+    var resultList = [],
+        oneM = 1024 * 1024;
+
+    var file = $('#file').liteImage({
+        // 是否支持同时选中多张图片（目前（2014.07.07）测试Android 4.x 的chrome还不支持该选项）
+        multiple: true,
+        // 按原图缩放的比例。也可以是一个大于1的正整数，例如720，这样liteImage会按照720p的比例自动计算出缩放比例
+        scale : 0.5,
+        // 根据原图质量，等比例降低图片大小(size)，不改变图片宽高(scale)。该属性不是所有浏览器都支持，目前touch端只有最新的chrome 35.x才支持（Safari暂时未知）。不支持该属性的浏览器会忽略掉该值。
+        quality : 0.5,
+        //控制该Input 组件总共图片文件的大小（size）
+        maxSize: 20 * oneM,
+        //控制用户选择单个最大图片文件的大小（size）
+        singleSize: 5 * oneM,
+        //控制每次选择文件的最大个数
+        perCount: 2,
+        //压缩过程中，出现错误时的handler，可以通过参数data.type判断是哪种类型的错误
+        error: function(data) {
+            console.log(data);
+        },
+        //图片压缩前的handler，data.file是选择的文件对象，选择N个图片会执行N次before，在该函数中可以根据选择图片的大小，适时调整需要压缩图片的比例
+        before: function(data) {
+            console.log('before', data);
+            var p = '<p data-name="'+data.file.name+'">'+data.file.name+' 图片压缩中请耐心等待...</p>';
+
+            $('#preview').append(p);
+
+            var size = data.file.size;
+            if(size > 4 * oneM){
+                file.setProperty('scale', 0.5);
+            }else if(size > 2 * oneM){
+                file.setProperty('scale', 0.6);
+            }else if(size > oneM){
+                file.setProperty('scale', 0.8);
+            }
+        },
+        //图片压缩完成后的handler，压缩N张图片会执行N次after。图片压缩完后，其压缩结果不一定会比原图小（主要是图片本身size比较小的时候），这个时候data.file 存的是未处理的图片文件，类型为File，处理后的图片是Blob类型
+        after: function(data) {
+            console.log('after', data);
+            if(!data)return;
+            var img = new Image();
+            img.src = data.dataURL;
+            var name = data.source.file.name;
+            $('#preview').find('p[data-name="'+name+'"]').html(name).append('<br>').append(img);
+            resultList.push(data);
+        },
+        //所有图片压缩完成，会执行该函数，参数是一个数组，数组中存放选择的本地图片对应的压缩结果，如果压缩出错，则数组对应值为NULL
+        complete: function(data) {
+            console.log('complete', data);
+        }
+    });
+
+    $('#file_upload').click(function() {
+        var data = new FormData();
+        if (resultList) {
+            for (var i = 0; i < resultList.length; i++) {
+                var result = resultList[i];
+                data.append(result.source.file.name, result.file);
+            }
+
+            $.ajax({
+                cache: false,
+                type: 'post',
+                dataType: 'json',
+                url: 'file-upload',
+                data: data,
+                contentType: false,
+                processData: false,
+                success: function(data) {
+                    $('#preview').empty().html(JSON.stringify(data));
+                    console.log('success', data);
+                }
+            });
+            resultList.length = 0;
+        }else{
+            $('#preview').empty().html('请选择图片');
+        }
+    });
+});
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
